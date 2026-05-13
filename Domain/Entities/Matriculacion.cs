@@ -1,4 +1,4 @@
-namespace MiProyectoAcademico.Domain.Entities;
+namespace LP3.Domain.Entities;
 
 public class Matriculacion
 {

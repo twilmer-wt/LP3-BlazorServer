@@ -1,4 +1,4 @@
-namespace MiProyectoAcademico.Domain.Constants;
+namespace LP3.Domain.Constants;
 
 /// <summary>
 /// Reglas y límites del dominio académico.

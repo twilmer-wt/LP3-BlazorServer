@@ -1,4 +1,4 @@
-namespace MiProyectoAcademico.Domain.Enums;
+namespace LP3.Domain.Enums;
 
 public enum EstadoEstudiante
 {
