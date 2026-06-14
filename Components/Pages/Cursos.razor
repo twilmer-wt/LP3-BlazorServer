@@ -1,0 +1,318 @@
+@page "/cursos"
+@rendermode InteractiveServer
+@using LP3.Shared.DTOs
+@using LP3.BlazorServer.Application.Services
+
+@inject ICursoService CursoService
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">Gesti&oacute;n de Cursos</h1>
+            <p class="text-muted">Administraci&oacute;n completa de cursos</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Buscar por C&oacute;digo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="codigoBusqueda" placeholder="Ej: IRI-005" />
+                        <button class="btn btn-primary" @onclick="BuscarPorCodigo">Buscar</button>
+                    </div>
+                    @if (cursoBuscado != null)
+                    {
+                        <div class="alert alert-info mt-3 mb-0">
+                            <strong>Encontrado:</strong> @cursoBuscado.Nombre (@cursoBuscado.Codigo) - ID: @cursoBuscado.Id
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Registrar Curso</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm FormName="registroCursoForm" Model="nuevoCurso" OnValidSubmit="RegistrarCurso">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="mb-2">
+                            <InputText class="form-control" placeholder="Nombre" @bind-Value="nuevoCurso.Nombre" />
+                        </div>
+                        <div class="mb-2">
+                            <InputText class="form-control" placeholder="C&oacute;digo" @bind-Value="nuevoCurso.Codigo" />
+                        </div>
+                        <div class="mb-2">
+                            <InputText class="form-control" placeholder="Cr&eacute;ditos" @bind-Value="nuevoCurso.Creditos" />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <InputCheckbox id="activoNew" class="form-check-input" @bind-Value="cursoActivoNuevo" />
+                            <label class="form-check-label" for="activoNew">Curso activo</label>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (mensajeRegistro.Length > 0)
+    {
+        <div class="alert @alertaClase alert-dismissible fade show" role="alert">
+            @mensajeRegistro
+            <button type="button" class="btn-close" @onclick="() => mensajeRegistro = string.Empty"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Cursos Registrados</h5>
+            <span class="badge bg-light text-dark">@(cursos?.Count ?? 0)</span>
+        </div>
+        <div class="card-body">
+            @if (cursos == null || cursos.Count == 0)
+            {
+                <div class="text-center py-4 text-muted">
+                    <p class="mb-0">No hay cursos registrados.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>C&oacute;digo</th>
+                                <th>Cr&eacute;ditos</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cur in cursos)
+                            {
+                                <tr>
+                                    <td>@cur.Id</td>
+                                    <td>@cur.Nombre</td>
+                                    <td><strong>@cur.Codigo</strong></td>
+                                    <td>@cur.Creditos</td>
+                                    <td>
+                                        @if (cur.Activo == "True")
+                                        {
+                                            <span class="badge bg-success">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Inactivo</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning me-1" @onclick="() => CargarParaEditar(cur)">Editar</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminar(cur.Id)">Eliminar</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (editandoCurso != null)
+    {
+        <div class="card shadow-sm mt-4 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Editando Curso</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="editandoCurso" OnValidSubmit="GuardarCambios">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="mb-2">
+                        <label class="form-label">Nombre</label>
+                        <InputText class="form-control" @bind-Value="editandoCurso.Nombre" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">C&oacute;digo (no editable)</label>
+                        <InputText class="form-control" @bind-Value="editandoCurso.Codigo" disabled />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Cr&eacute;ditos</label>
+                        <InputText class="form-control" @bind-Value="editandoCurso.Creditos" />
+                    </div>
+                    <div class="mb-3 form-check">
+                        <InputCheckbox id="activoEdit" class="form-check-input" @bind-Value="cursoActivoEdicion" />
+                        <label class="form-check-label" for="activoEdit">Curso activo</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary me-2">Guardar Cambios</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (mostrarConfirmacionEliminar)
+    {
+        <div class="modal d-block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">Confirmar Eliminaci&oacute;n</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p>&iquest;Est&aacute; seguro de que desea eliminar este curso?</p>
+                        <p class="text-danger mb-0"><strong>Esta acci&oacute;n no se puede deshacer.</strong></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" @onclick="EliminarCurso">S&iacute;, Eliminar</button>
+                        <button class="btn btn-secondary" @onclick="CancelarEliminar">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+</div>
+
+@code {
+    private ICollection<CursoDto> cursos = [];
+    private string mensajeRegistro = string.Empty;
+    private string codigoBusqueda = string.Empty;
+    private CursoDto? cursoBuscado;
+    private CursoDto nuevoCurso = new();
+    private CursoDto? editandoCurso;
+    private int idCursoEditando = 0;
+    private bool mostrarConfirmacionEliminar = false;
+    private int idCursoAEliminar = 0;
+    private bool cursoActivoNuevo = true;
+    private bool cursoActivoEdicion = true;
+
+    private string alertaClase => mensajeRegistro.StartsWith("OK") ? "alert-success" : "alert-danger";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCursos();
+    }
+
+    private async Task CargarCursos()
+    {
+        cursos = await CursoService.GetAll();
+    }
+
+    private async Task BuscarPorCodigo()
+    {
+        if (string.IsNullOrWhiteSpace(codigoBusqueda))
+        {
+            mensajeRegistro = "Ingrese un c&oacute;digo";
+            return;
+        }
+        cursoBuscado = await CursoService.GetByCodigoAsync(codigoBusqueda);
+        if (cursoBuscado == null)
+        {
+            mensajeRegistro = "No se encontr&oacute; un curso con ese c&oacute;digo";
+        }
+    }
+
+    private async Task RegistrarCurso()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoCurso.Nombre) ||
+            string.IsNullOrWhiteSpace(nuevoCurso.Codigo) ||
+            string.IsNullOrWhiteSpace(nuevoCurso.Creditos))
+        {
+            mensajeRegistro = "Complete todos los campos requeridos";
+            return;
+        }
+
+        nuevoCurso.Activo = cursoActivoNuevo.ToString();
+        bool resultado = await CursoService.CreateAsync(nuevoCurso);
+        if (resultado)
+        {
+            mensajeRegistro = "OK Curso registrado exitosamente";
+            nuevoCurso = new();
+            cursoActivoNuevo = true;
+            cursoBuscado = null;
+            await CargarCursos();
+        }
+        else
+        {
+            mensajeRegistro = "Error al registrar. Verifique que el c&oacute;digo sea &uacute;nico";
+        }
+    }
+
+    private void CargarParaEditar(CursoDto curso)
+    {
+        editandoCurso = new CursoDto
+        {
+            Id = curso.Id,
+            Nombre = curso.Nombre,
+            Codigo = curso.Codigo,
+            Creditos = curso.Creditos,
+            Activo = curso.Activo
+        };
+        idCursoEditando = curso.Id;
+        cursoActivoEdicion = curso.Activo == "True";
+    }
+
+    private async Task GuardarCambios()
+    {
+        if (editandoCurso == null) return;
+
+        editandoCurso.Activo = cursoActivoEdicion.ToString();
+        bool resultado = await CursoService.UpdateAsync(idCursoEditando, editandoCurso);
+        if (resultado)
+        {
+            mensajeRegistro = "OK Curso actualizado exitosamente";
+            editandoCurso = null;
+            idCursoEditando = 0;
+            await CargarCursos();
+        }
+        else
+        {
+            mensajeRegistro = "Error al actualizar el curso";
+        }
+    }
+
+    private void CancelarEdicion()
+    {
+        editandoCurso = null;
+        idCursoEditando = 0;
+    }
+
+    private void ConfirmarEliminar(int id)
+    {
+        idCursoAEliminar = id;
+        mostrarConfirmacionEliminar = true;
+    }
+
+    private async Task EliminarCurso()
+    {
+        bool resultado = await CursoService.DeleteAsync(idCursoAEliminar);
+        if (resultado)
+        {
+            mensajeRegistro = "OK Curso eliminado exitosamente";
+            mostrarConfirmacionEliminar = false;
+            idCursoAEliminar = 0;
+            await CargarCursos();
+        }
+        else
+        {
+            mensajeRegistro = "Error al eliminar el curso";
+        }
+    }
+
+    private void CancelarEliminar()
+    {
+        mostrarConfirmacionEliminar = false;
+        idCursoAEliminar = 0;
+    }
+}
